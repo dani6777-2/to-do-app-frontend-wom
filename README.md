@@ -551,3 +551,122 @@ module.exports = {
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE.md](./LICENSE.md) para más detalles.
+
+## 🚀 Despliegue en Google Cloud Run
+
+### Prerrequisitos
+
+1. Cuenta de Google Cloud Platform
+2. Proyecto GCP creado y configurado
+3. Cloud Run API habilitada
+4. Workload Identity Federation configurado
+5. Permisos necesarios configurados
+
+### Configuración de Secretos en GitHub
+
+Necesitarás configurar los siguientes secretos en tu repositorio de GitHub:
+
+```bash
+GCP_PROJECT_ID=tu-proyecto-id
+WIF_PROVIDER=projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+WIF_SERVICE_ACCOUNT=my-service-account@my-project.iam.gserviceaccount.com
+```
+
+### Configuración de Workload Identity Federation
+
+1. Crear un pool de identidad:
+```bash
+gcloud iam workload-identity-pools create "github-actions-pool" \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+```
+
+2. Crear un proveedor de identidad:
+```bash
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --project="${PROJECT_ID}" \
+  --location="global" \
+  --workload-identity-pool="github-actions-pool" \
+  --display-name="GitHub provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+```
+
+3. Crear una cuenta de servicio:
+```bash
+gcloud iam service-accounts create "github-actions-service-account" \
+  --project="${PROJECT_ID}" \
+  --description="Service account for GitHub Actions" \
+  --display-name="GitHub Actions Service Account"
+```
+
+4. Configurar los permisos:
+```bash
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:github-actions-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:github-actions-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/storage.admin"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:github-actions-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+```
+
+5. Permitir que GitHub Actions use la cuenta de servicio:
+```bash
+gcloud iam service-accounts add-iam-policy-binding "github-actions-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --project="${PROJECT_ID}" \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/${GITHUB_REPOSITORY}"
+```
+
+### Despliegue Manual
+
+Si necesitas desplegar manualmente, puedes usar los siguientes comandos:
+
+```bash
+# Construir la imagen
+docker build -t gcr.io/${PROJECT_ID}/todo-app-frontend .
+
+# Subir la imagen a Container Registry
+docker push gcr.io/${PROJECT_ID}/todo-app-frontend
+
+# Desplegar en Cloud Run
+gcloud run deploy todo-app-frontend \
+  --image gcr.io/${PROJECT_ID}/todo-app-frontend \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+### Despliegue Automático
+
+El despliegue automático se realiza a través de GitHub Actions cuando:
+
+1. Se hace push a la rama principal (main/master)
+2. Se activa manualmente el workflow desde la interfaz de GitHub
+
+El proceso de despliegue incluye:
+
+1. Pruebas y linting
+2. Construcción de la imagen Docker
+3. Subida de la imagen a Container Registry
+4. Despliegue en Cloud Run
+
+### Monitoreo y Logs
+
+Para ver los logs de la aplicación:
+
+```bash
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=todo-app-frontend" --limit 50
+```
+
+Para monitorear el servicio:
+
+```bash
+gcloud run services describe todo-app-frontend
+```
