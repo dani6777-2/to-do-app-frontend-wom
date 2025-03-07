@@ -7,12 +7,12 @@ export const Footer = () => {
         <p className="footer-text">
           © {new Date().getFullYear()} Todo App. Made with ❤️ by{' '}
           <a
-            href="https://github.com/yourusername"
+            href="https://github.com/dani6777-2"
             target="_blank"
             rel="noopener noreferrer"
             className="footer-link"
           >
-            Your Name
+            Daniel Morales 
           </a>
         </p>
       </div>

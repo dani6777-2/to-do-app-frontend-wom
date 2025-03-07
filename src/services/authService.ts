@@ -1,6 +1,6 @@
 import { RegisterRequest, RegisterResponse, LoginRequest, LoginResponse } from '../interfaces/auth';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://fastapi-service-175162667749.europe-west1.run.app';
 
 export const register = async (data: RegisterRequest): Promise<RegisterResponse> => {
   const response = await fetch(`${API_URL}/auth/register`, {

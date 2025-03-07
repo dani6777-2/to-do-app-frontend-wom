@@ -1,6 +1,6 @@
 import { CreateTaskRequest, TaskResponse } from '../interfaces/tasks';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://fastapi-service-175162667749.europe-west1.run.app';
 
 export const createTask = async (data: CreateTaskRequest): Promise<TaskResponse> => {
   const apiKey = localStorage.getItem('api_key');
